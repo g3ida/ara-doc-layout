@@ -2,7 +2,15 @@
 
 Arabic document page layout analyzer.
 
-![Two pages with their regions drawn](docs/example.png)
+![Two real pages with PP-DocLayout_plus-L's regions drawn: a printed commentary with its gloss in the margin, and a modern typeset page](docs/example.png)
+
+*Left:* Ibn Hamdun's gloss on al-Azhari's commentary on the *Ājurrūmiyya*,
+page 10 — a public-domain print ([Wikimedia Commons](https://commons.wikimedia.org/wiki/File:%D8%AD%D8%A7%D8%B4%D9%8A%D8%A9_%D8%A7%D8%A8%D9%86_%D8%AD%D9%85%D8%AF%D9%88%D9%86_%D8%B9%D9%84%D9%89_%D8%B4%D8%B1%D8%AD_%D8%AE%D8%A7%D9%84%D8%AF_%D8%A7%D9%84%D8%A3%D8%B2%D9%87%D8%B1%D9%8A_%D8%B9%D9%84%D9%89_%D8%A7%D9%84%D8%A2%D8%AC%D8%B1%D9%88%D9%85%D9%8A%D8%A9.pdf),
+Internet Archive `ajouroumya_ibnhamdoun`).
+*Right:* Mayy Ziyada, *ʿĀʾisha Taymūr* (1926), page 15, Hindawi Foundation
+edition, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
+([Wikimedia Commons](https://commons.wikimedia.org/wiki/File:%D8%B9%D8%A7%D8%A6%D8%B4%D8%A9_%D8%AA%D9%8A%D9%85%D9%88%D8%B1_%D9%85%D9%8A_%D8%B2%D9%8A%D8%A7%D8%AF%D8%A9_1926.pdf)).
+Both are shown with the detected regions drawn over them.
 
 Two models, fine-tuned on the same 12,000 synthetic and 1,352 hand-labelled
 real pages:
