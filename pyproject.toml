@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ara-doc-layout"
+version = "0.1.0"
+description = "Find the text, footnotes, glosses (hashiya), running heads, page numbers, tables, captions and figures on pages of Arabic books."
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+# The region geometry needs nothing; Pillow is for handing the detector a page
+# and for drawing what it found.
+dependencies = ["Pillow"]
+
+[project.optional-dependencies]
+# Paddle's GPU wheels past 2.6 are only on Paddle's own index, one per CUDA
+# version, so `gpu` needs `--extra-index-url` on the command line (README);
+# the CPU build is on PyPI. PaddleDetection is pinned to the commit the
+# checkpoint was trained and measured with, as an archive rather than a clone:
+# its history is several times the size of the tree. It imports
+# `pkg_resources`, which setuptools 82 stopped shipping.
+cpu = [
+    "paddlepaddle==3.3.1",
+    "paddledet @ https://github.com/PaddlePaddle/PaddleDetection/archive/65e643573a35e068c796527648f7c2166de09cce.zip",
+    "numpy<2",
+    "setuptools<82",
+]
+gpu = [
+    "paddlepaddle-gpu==3.3.1",
+    "paddledet @ https://github.com/PaddlePaddle/PaddleDetection/archive/65e643573a35e068c796527648f7c2166de09cce.zip",
+    "numpy<2",
+    "setuptools<82",
+]
+test = ["pytest"]
+
+[project.urls]
+Homepage = "https://github.com/g3ida/ara-doc-layout"
+
+[project.scripts]
+ara-doc-layout = "ara_doc_layout.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+ara_doc_layout = ["model/config.yml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["detector: runs the model; needs Paddle and PaddleDetection (skipped without them)"]
+
+[tool.ruff]
+line-length = 100
