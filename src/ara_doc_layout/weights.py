@@ -1,7 +1,9 @@
 """The checkpoints, fetched from the project's releases on first use.
 
 They are past what a git host keeps in a repository and what belongs in a
-wheel, so each is a release asset. It is downloaded once into the user's cache,
+wheel, so each is a release asset — in a release of its own model, tagged
+`<model>-v<n>`, so that one model's next checkpoint is never read as an
+improvement on the other's, nor tied to the version of the code. It is downloaded once into the user's cache,
 checked against the hash the package was tested with, and read from there
 afterwards; a download that is cut short or altered is never used.
 """
@@ -31,13 +33,13 @@ class Checkpoint:
 
 PP_DOCLAYOUT = Checkpoint(
     "pp_doclayout_plusl.pdparams",
-    f"{RELEASES}/v0.1.0/pp_doclayout_plusl.pdparams",
+    f"{RELEASES}/ppdl-v1/pp_doclayout_plusl.pdparams",
     "6877e5c91f9de104db21beea27ab8de39d20ed2210c32a3f83daa9eafdde448e",
     "ARA_DOC_LAYOUT_WEIGHTS",
 )
 DFINE = Checkpoint(
     "dfine_l.onnx",
-    f"{RELEASES}/v0.2.0/dfine_l.onnx",
+    f"{RELEASES}/dfine-v1/dfine_l.onnx",
     "b85900d259887d282a521b14ab0e7504c6256695458b658e87abb27edc6c29b5",
     "ARA_DOC_LAYOUT_DFINE_WEIGHTS",
 )
