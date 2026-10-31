@@ -1,4 +1,4 @@
-"""The model: a fine-tuned PP-DocLayout_plus-L, run through PaddleDetection.
+"""PP-DocLayout_plus-L, fine-tuned for Arabic pages and run through PaddleDetection.
 
 Paddle 3.3 cannot export this model to a static graph — `export_model.py` fails
 inside `hybrid_encoder` (`to_static`: "must be Value, but got Variable") — so it
@@ -15,16 +15,15 @@ from collections.abc import Iterable
 from pathlib import Path
 
 from .regions import CLASSES, Box, Region
-from .weights import weights_path
+from .weights import PP_DOCLAYOUT, weights_path
 
 CONFIG = Path(__file__).with_name("model") / "config.yml"
 
-#: The operating point the checkpoint was selected at on the gold set; every
-#: figure in the README is at it.
+#: The operating point the checkpoints were selected at, on human-reviewed pages.
 SCORE = 0.5
 
 
-class Detector:
+class PPDocLayout:
     """Loads the model once; :meth:`detect` answers for one page at a time.
 
     `ppdet` keeps the config it loads in a module-level registry, so a process
@@ -46,7 +45,7 @@ class Detector:
         from ppdet.data import transform
         from ppdet.utils.checkpoint import load_pretrain_weight
 
-        weights = Path(weights) if weights is not None else weights_path()
+        weights = Path(weights) if weights is not None else weights_path(PP_DOCLAYOUT)
         if not weights.is_file():
             raise FileNotFoundError(f"No weights at {weights}.")
         # ppdet finds the file by adding `.pdparams` to the name it is given
@@ -121,3 +120,7 @@ class Detector:
 
     def detect_many(self, images: Iterable, score: float | None = None) -> list[list[Region]]:
         return [self.detect(image, score) for image in images]
+
+
+#: The name 0.1 gave it, when it was the only model.
+Detector = PPDocLayout

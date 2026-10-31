@@ -1,10 +1,10 @@
-"""The detector in a process of its own, for a program under another Python.
+"""A model in a process of its own, for a program under another Python.
 
-Paddle pins a CUDA build that an OCR or TTS environment rarely shares, so the
-program that wants regions starts this under the interpreter that has Paddle
-and speaks JSON lines to it:
+Paddle pins a CUDA build and numpy < 2 that another application's environment
+rarely shares, so the program that wants regions starts this under the
+interpreter that has the model's runtime and speaks JSON lines to it:
 
-    python -I -m ara_doc_layout.worker [--device cpu] [--score 0.5] [--mark "@@x "]
+    python -I -m ara_doc_layout.worker [--model dfine] [--device cpu] [--score 0.5] [--mark "@@x "]
 
 * the first answer is ``{"ready": true}``, once the model is loaded;
 * each request ``{"images": [path, …]}`` gets one answer per image, in order:
@@ -12,8 +12,8 @@ and speaks JSON lines to it:
   pixels, or ``{"error": "…"}`` — one bad page does not end the worker;
 * end of input ends it.
 
-Answers are prefixed with the mark, because Paddle prints to stdout too and its
-chatter must not be read as a reply.
+Answers are prefixed with the mark, because the runtimes print to stdout too
+and their chatter must not be read as a reply.
 """
 
 from __future__ import annotations
@@ -24,6 +24,7 @@ import sys
 from typing import TextIO
 
 from .detector import CONFIG, SCORE
+from .models import MODELS, load_model
 
 MARK = "@@ara-doc-layout "
 
@@ -48,19 +49,18 @@ def serve(detector, requests: TextIO, answers: TextIO, mark: str = MARK) -> None
 
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="python -m ara_doc_layout.worker")
-    parser.add_argument("--weights", help="a .pdparams file; the released checkpoint if not given")
-    parser.add_argument("--config", default=str(CONFIG))
-    parser.add_argument("--device", help="gpu, gpu:1 or cpu; the GPU when Paddle was built for one")
+    parser.add_argument("--model", choices=list(MODELS), default="pp-doclayout")
+    parser.add_argument("--weights", help="a checkpoint of your own; the released one if not given")
+    parser.add_argument("--config", default=str(CONFIG), help="pp-doclayout only")
+    parser.add_argument("--device", help="gpu, gpu:1 or cpu; the GPU when the runtime has one")
     parser.add_argument("--score", type=float, default=SCORE)
     parser.add_argument("--mark", default=MARK, help="prefix of every answer line")
     args = parser.parse_args(argv)
 
-    from .detector import Detector
-
-    detector = Detector(
-        weights=args.weights, config=args.config, device=args.device, score=args.score
-    )
-    serve(detector, sys.stdin, sys.stdout, args.mark)
+    options = {"weights": args.weights, "device": args.device, "score": args.score}
+    if args.model == "pp-doclayout":
+        options["config"] = args.config
+    serve(load_model(args.model, **options), sys.stdin, sys.stdout, args.mark)
 
 
 if __name__ == "__main__":

@@ -4,17 +4,21 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ara-doc-layout"
-version = "0.1.0"
+version = "0.2.0"
 description = "Find the text, footnotes, glosses (hashiya), running heads, page numbers, tables, captions and figures on pages of Arabic books."
 readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 requires-python = ">=3.10"
-# The region geometry needs nothing; Pillow is for handing the detector a page
-# and for drawing what it found.
+# The region geometry and the comparison need nothing; Pillow is for handing a
+# model a page and for drawing what it found.
 dependencies = ["Pillow"]
 
 [project.optional-dependencies]
+# `cpu` and `gpu` install both models: PP-DocLayout_plus-L on Paddle, D-FINE-L
+# on onnxruntime (on the CPU in either, where it takes a fifth of a second a
+# page). `dfine` is D-FINE-L alone, without Paddle.
+#
 # Paddle's GPU wheels past 2.6 are only on Paddle's own index, one per CUDA
 # version, so `gpu` needs `--extra-index-url` on the command line (README);
 # the CPU build is on PyPI. PaddleDetection is pinned to the commit the
@@ -26,13 +30,16 @@ cpu = [
     "paddledet @ https://github.com/PaddlePaddle/PaddleDetection/archive/65e643573a35e068c796527648f7c2166de09cce.zip",
     "numpy<2",
     "setuptools<82",
+    "onnxruntime",
 ]
 gpu = [
     "paddlepaddle-gpu==3.3.1",
     "paddledet @ https://github.com/PaddlePaddle/PaddleDetection/archive/65e643573a35e068c796527648f7c2166de09cce.zip",
     "numpy<2",
     "setuptools<82",
+    "onnxruntime",
 ]
+dfine = ["onnxruntime", "numpy"]
 test = ["pytest"]
 
 [project.urls]
@@ -49,7 +56,10 @@ ara_doc_layout = ["model/config.yml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-markers = ["detector: runs the model; needs Paddle and PaddleDetection (skipped without them)"]
+markers = [
+    "detector: runs PP-DocLayout_plus-L; needs Paddle and PaddleDetection (skipped without them)",
+    "dfine: runs D-FINE-L; needs onnxruntime (skipped without it)",
+]
 
 [tool.ruff]
 line-length = 100

@@ -18,6 +18,7 @@ venv*/
 # The weights are a release asset, never a commit: GitHub refuses files
 # over 100 MB, and one pushed by mistake stays in the history.
 *.pdparams
+*.onnx
 release-assets/
 
 # What the command writes when run from the clone

@@ -4,8 +4,16 @@ Arabic document page layout analyzer.
 
 ![Two pages with their regions drawn](docs/example.png)
 
-The model is based on PP-DocLayout_plus-L (RT-DETR-L on an HGNetV2 backbone),
-fine-tuned on 12,000 synthetic and 1,352 hand-labelled real pages.
+Two models, fine-tuned on the same 12,000 synthetic and 1,352 hand-labelled
+real pages:
+
+- **PP-DocLayout_plus-L** (RT-DETR-L on an HGNetV2 backbone), run through
+  PaddleDetection.
+- **D-FINE-L**, exported to ONNX and run on onnxruntime: no Paddle and no
+  PyTorch.
+
+They are different architectures, so they make different mistakes. Where they
+disagree about a page is where it is worth a look (see *Comparing the two*).
 
 ## What it finds
 
@@ -29,22 +37,28 @@ TODO
 
 ## Install
 
-With an NVIDIA GPU:
+Both models, with an NVIDIA GPU:
 
 ```bash
 pip install "ara-doc-layout[gpu] @ git+https://github.com/g3ida/ara-doc-layout.git" \
     --extra-index-url https://www.paddlepaddle.org.cn/packages/stable/cu129/
 ```
 
-On the CPU:
+Both models, on the CPU:
 
 ```bash
 pip install "ara-doc-layout[cpu] @ git+https://github.com/g3ida/ara-doc-layout.git"
 ```
 
-Without `[gpu]` or `[cpu]`, only the region geometry is installed (`Region`,
-`reading_order`, `side_by_side`) and Paddle is not. That is enough for a
-program that talks to the detector running in another environment.
+D-FINE-L alone, on onnxruntime: a 10-second install, no Paddle:
+
+```bash
+pip install "ara-doc-layout[dfine] @ git+https://github.com/g3ida/ara-doc-layout.git"
+```
+
+With no extra, only the region geometry and the comparison are installed
+(`Region`, `reading_order`, `side_by_side`, `role_disagreements`). That is
+enough for a program that talks to a model running in another environment.
 
 - **The extra index:** Paddle's GPU wheels from 3.0 on are not on PyPI. They
   come from Paddle's own index, one per CUDA version. `cu129` is the build the
@@ -52,10 +66,12 @@ program that talks to the detector running in another environment.
   3.3.1.
 - **A virtualenv of its own:** Paddle pins numpy < 2 and brings its own CUDA
   libraries, which rarely sit well beside PyTorch.
-- **The weights** (132 MB) are downloaded from the GitHub release on first use
-  into `~/.cache/ara-doc-layout/`. They are checked against their SHA-256
-  before use. To use a local copy, set `ARA_DOC_LAYOUT_WEIGHTS` to a
-  `.pdparams` file.
+- **The weights** are downloaded from the GitHub releases on first use into
+  `~/.cache/ara-doc-layout/`: 132 MB for PP-DocLayout_plus-L, 124 MB for
+  D-FINE-L. They are checked against their SHA-256 before use. To use a local
+  copy, set `ARA_DOC_LAYOUT_WEIGHTS` to a `.pdparams` file for
+  PP-DocLayout_plus-L, or `ARA_DOC_LAYOUT_DFINE_WEIGHTS` to an `.onnx` file
+  for D-FINE-L.
 - **PaddleDetection** is pinned to commit `65e6435`, the one the checkpoint
   was trained and measured with.
 
@@ -71,11 +87,11 @@ pip install -e ".[gpu,test]" --extra-index-url https://www.paddlepaddle.org.cn/p
 
 ```python
 from PIL import Image
-from ara_doc_layout import Detector, reading_order, side_by_side
+from ara_doc_layout import PPDocLayout, reading_order, side_by_side
 
-detector = Detector()                      # on the GPU if Paddle was built for one
+model = PPDocLayout()                      # or DFine(); on the GPU if the runtime has one
 page = Image.open("page.png")
-regions = detector.detect(page)            # boxes in the image's own pixels
+regions = model.detect(page)               # boxes in the image's own pixels
 
 for region in reading_order(regions, page.width):
     print(region.kind, region.box, round(region.score, 2))
@@ -85,23 +101,46 @@ if side_by_side(regions):
 ```
 
 - **What `detect` takes:** a path, a PIL image or an RGB array.
-- **Resolution:** every page is squeezed to 800×800 on the way in, so
-  rendering a PDF page past ~150 dpi buys nothing.
+- **Resolution:** every page is squeezed to 800×800 (PP-DocLayout_plus-L) or
+  640×640 (D-FINE-L) on the way in, so rendering a PDF page past ~150 dpi
+  buys nothing.
 - **Points, not pixels:** to put the boxes in PDF points, use
   `region.scaled(72 / dpi)`.
-- **The floor:** `score=` sets the minimum confidence, per detector or per
-  call.
+- **The floor:** `score=` sets the minimum confidence, per model or per call.
+- **By name:** `load_model("pp-doclayout")` or `load_model("dfine")`.
+
+### Comparing the two
+
+```python
+from ara_doc_layout import DFine, PPDocLayout, role_disagreements
+
+first, second = PPDocLayout().detect(page), DFine().detect(page)
+for d in role_disagreements(first, second):
+    print(d.by, d.region.kind, d.region.box)   # by: 0 = first, 1 = second
+```
+
+`role_disagreements` keeps only the differences that change what the ink is
+read as: body text, footnote or gloss, or not read at all. A footnote one model
+calls text, a running head one reads as body, a gloss one misses. A paragraph
+boxed as one block or as two, or a page number boxed a little wide, is not a
+disagreement there. `box_disagreements` keeps every box the two draw
+differently. Neither function cares which model produced which list: either
+side can come from any detector, or from a person.
 
 ### From the command line
 
 ```bash
 ara-doc-layout page-*.png --draw drawn/
+ara-doc-layout page-*.png --model dfine
+ara-doc-layout page-*.png --compare
 ```
 
 Prints one JSON line per page: its size, its regions, and `reading_order`
-(indices into `regions`). With `--draw`, each page is also written with its
-regions outlined. Paddle's own chatter goes to stderr, so the output can be
-piped.
+(indices into `regions`). `--model` picks the model (`pp-doclayout` by
+default). `--compare` reads each page with the other model as well, and adds
+its regions and the two models' `disagreements`. With `--draw`, each page is
+also written with its regions outlined. The runtimes' own chatter goes to
+stderr, so the output can be piped.
 
 
 
@@ -112,10 +151,13 @@ Measured on an RTX 5060 Laptop (8 GB) and a Core Ultra 9 275HX, with pages at
 
 | | load | per page (median) |
 |---|---:|---:|
-| GPU | 3.8 s | 48 ms |
-| CPU (24 threads) | 4.1 s | 3.95 s |
+| PP-DocLayout_plus-L, GPU | 3.8 s | 48 ms |
+| PP-DocLayout_plus-L, CPU (24 threads) | 4.1 s | 3.95 s |
+| D-FINE-L, CPU (24 threads) | 1.2 s | 223 ms |
+
+D-FINE-L has not been timed on the GPU.
 
 ## Licence
 
-Apache-2.0, see [LICENSE](LICENSE). The base model (PP-DocLayout_plus-L) and
-PaddleDetection are Apache-2.0 as well.
+Apache-2.0, see [LICENSE](LICENSE). The base models (PP-DocLayout_plus-L and
+D-FINE-L) and PaddleDetection are Apache-2.0 as well.

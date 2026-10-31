@@ -1,12 +1,11 @@
-# PP-DocLayout_plus-L fine-tuned for Arabic pages: the model `model.pdparams`
+# PP-DocLayout_plus-L fine-tuned for Arabic pages: the model the checkpoint
 # was trained as, and the way a page is prepared for it.
 #
-# This is the training config the checkpoint came from
-# (doc-layout-clean/models/pp_doclayout_plusl/config.yml, the v16 run) with
-# PaddleX's base config for PP-DocLayout_plus-L written in, and every section
-# that only training reads — datasets, augmentation, optimiser, schedule — left
-# out. The original named its base by a path into a PaddleX checkout and its
-# datasets by paths relative to the research folder, so it ran only from there.
+# This is the training config the checkpoint came from, with PaddleX's base
+# config for PP-DocLayout_plus-L written in, and every section that only
+# training reads — datasets, augmentation, optimiser, schedule — left out. The
+# original named its base by a path into a PaddleX checkout and its datasets by
+# paths relative to the training folder, so it ran only from there.
 #
 # The values that change what the model computes are the base's, unchanged,
 # except the three the fine-tune set: `num_classes` (9, not the base's 20),
@@ -76,7 +75,7 @@ DINOHead:
 DETRPostProcess:
   num_top_queries: 300
 
-# `Decode` is the detector's own job (`Detector._sample`), so a page can be
+# `Decode` is the detector's own job (`PPDocLayout._sample`), so a page can be
 # handed over already in memory; the rest runs as ppdet's operators.
 TestReader:
   inputs_def:

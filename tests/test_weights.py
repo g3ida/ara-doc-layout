@@ -1,4 +1,4 @@
-"""Fetching the checkpoint: what is trusted, what is reused, and what an
+"""Fetching the checkpoints: what is trusted, what is reused, and what an
 interrupted or altered download leaves behind. Against local files; nothing
 here reaches the network."""
 
@@ -9,8 +9,16 @@ import urllib.request
 
 import pytest
 
-from ara_doc_layout import weights
-from ara_doc_layout.weights import CACHE_ENV, FILENAME, WEIGHTS_ENV, fetch, weights_path
+from ara_doc_layout.weights import (
+    CACHE_ENV,
+    DFINE,
+    FILENAME,
+    PP_DOCLAYOUT,
+    WEIGHTS_ENV,
+    Checkpoint,
+    fetch,
+    weights_path,
+)
 
 
 @pytest.fixture
@@ -59,15 +67,13 @@ def test_an_interrupted_download_leaves_nothing_behind(tmp_path, monkeypatch) ->
 def test_the_first_use_downloads_and_the_next_reads_the_cache(
     tmp_path, release, monkeypatch
 ) -> None:
-    monkeypatch.delenv(WEIGHTS_ENV, raising=False)
     monkeypatch.setenv(CACHE_ENV, str(tmp_path / "cache"))
-    monkeypatch.setattr(weights, "URL", release.as_uri())
-    monkeypatch.setattr(weights, "SHA256", _sha(release))
+    checkpoint = Checkpoint(FILENAME, release.as_uri(), _sha(release), "ARA_DOC_LAYOUT_TEST")
 
-    first = weights_path()
+    first = weights_path(checkpoint)
     release.unlink()
 
-    assert weights_path() == first == tmp_path / "cache" / FILENAME
+    assert weights_path(checkpoint) == first == tmp_path / "cache" / FILENAME
 
 
 def test_a_file_named_in_the_environment_is_used_as_it_is(tmp_path, release, monkeypatch) -> None:
@@ -91,3 +97,14 @@ def test_without_leave_to_download_nothing_is_fetched(tmp_path, monkeypatch) -> 
 
     with pytest.raises(FileNotFoundError, match="not allowed"):
         weights_path(download=False)
+
+
+def test_each_model_has_its_own_file_and_its_own_variable(tmp_path, release, monkeypatch) -> None:
+    """Naming one model's file must not hand it to the other."""
+    monkeypatch.setenv(DFINE.env, str(release))
+    monkeypatch.delenv(PP_DOCLAYOUT.env, raising=False)
+    monkeypatch.setenv(CACHE_ENV, str(tmp_path / "cache"))
+
+    assert weights_path(DFINE) == release
+    with pytest.raises(FileNotFoundError, match="not allowed"):
+        weights_path(PP_DOCLAYOUT, download=False)

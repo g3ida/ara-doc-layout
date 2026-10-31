@@ -1,9 +1,9 @@
-"""The checkpoint, fetched from the project's release on first use.
+"""The checkpoints, fetched from the project's releases on first use.
 
-132 MB is past what a git host keeps in a repository and what belongs in a
-wheel, so the weights are a release asset. They are downloaded once into the
-user's cache, checked against the hash the package was tested with, and read
-from there afterwards; a download that is cut short or altered is never used.
+They are past what a git host keeps in a repository and what belongs in a
+wheel, so each is a release asset. It is downloaded once into the user's cache,
+checked against the hash the package was tested with, and read from there
+afterwards; a download that is cut short or altered is never used.
 """
 
 from __future__ import annotations
@@ -13,16 +13,44 @@ import os
 import sys
 import tempfile
 import urllib.request
+from dataclasses import dataclass
 from pathlib import Path
 
-FILENAME = "pp_doclayout_plusl.pdparams"
-URL = f"https://github.com/g3ida/ara-doc-layout/releases/download/v0.1.0/{FILENAME}"
-SHA256 = "6877e5c91f9de104db21beea27ab8de39d20ed2210c32a3f83daa9eafdde448e"
+RELEASES = "https://github.com/g3ida/ara-doc-layout/releases/download"
 
-#: A weights file to use instead of the cached download — for a machine with
-#: no network, or a checkpoint of your own.
-WEIGHTS_ENV = "ARA_DOC_LAYOUT_WEIGHTS"
-#: Where the download is kept; `$XDG_CACHE_HOME/ara-doc-layout` otherwise.
+
+@dataclass(frozen=True)
+class Checkpoint:
+    filename: str
+    url: str
+    sha256: str
+    #: An environment variable naming a file to use instead of the download —
+    #: for a machine with no network, or a checkpoint of your own.
+    env: str
+
+
+PP_DOCLAYOUT = Checkpoint(
+    "pp_doclayout_plusl.pdparams",
+    f"{RELEASES}/v0.1.0/pp_doclayout_plusl.pdparams",
+    "6877e5c91f9de104db21beea27ab8de39d20ed2210c32a3f83daa9eafdde448e",
+    "ARA_DOC_LAYOUT_WEIGHTS",
+)
+DFINE = Checkpoint(
+    "dfine_l.onnx",
+    f"{RELEASES}/v0.2.0/dfine_l.onnx",
+    "b85900d259887d282a521b14ab0e7504c6256695458b658e87abb27edc6c29b5",
+    "ARA_DOC_LAYOUT_DFINE_WEIGHTS",
+)
+
+# PP-DocLayout_plus-L's, under the names 0.1 gave them.
+FILENAME, URL, SHA256, WEIGHTS_ENV = (
+    PP_DOCLAYOUT.filename,
+    PP_DOCLAYOUT.url,
+    PP_DOCLAYOUT.sha256,
+    PP_DOCLAYOUT.env,
+)
+
+#: Where downloads are kept; `$XDG_CACHE_HOME/ara-doc-layout` otherwise.
 CACHE_ENV = "ARA_DOC_LAYOUT_CACHE"
 
 _CHUNK = 1 << 20
@@ -43,7 +71,7 @@ def fetch(url: str, target: Path, sha256: str) -> Path:
     """
     target.parent.mkdir(parents=True, exist_ok=True)
     digest = hashlib.sha256()
-    print(f"ara-doc-layout: downloading the weights to {target}", file=sys.stderr)
+    print(f"ara-doc-layout: downloading {target.name} to {target.parent}", file=sys.stderr)
     with tempfile.NamedTemporaryFile(dir=target.parent, suffix=".part", delete=False) as part:
         try:
             with urllib.request.urlopen(url) as response:
@@ -64,17 +92,17 @@ def fetch(url: str, target: Path, sha256: str) -> Path:
     return target
 
 
-def weights_path(*, download: bool = True) -> Path:
-    """The checkpoint on disk: the file `ARA_DOC_LAYOUT_WEIGHTS` names, else the
+def weights_path(checkpoint: Checkpoint = PP_DOCLAYOUT, *, download: bool = True) -> Path:
+    """*checkpoint* on disk: the file its environment variable names, else the
     cached download, fetched now if it is not there yet."""
-    if os.environ.get(WEIGHTS_ENV):
-        path = Path(os.environ[WEIGHTS_ENV])
+    if os.environ.get(checkpoint.env):
+        path = Path(os.environ[checkpoint.env])
         if not path.is_file():
-            raise FileNotFoundError(f"{WEIGHTS_ENV} names {path}, which is not a file.")
+            raise FileNotFoundError(f"{checkpoint.env} names {path}, which is not a file.")
         return path
-    target = cache_dir() / FILENAME
+    target = cache_dir() / checkpoint.filename
     if target.is_file():
         return target
     if not download:
         raise FileNotFoundError(f"No weights at {target}, and downloading was not allowed.")
-    return fetch(URL, target, SHA256)
+    return fetch(checkpoint.url, target, checkpoint.sha256)

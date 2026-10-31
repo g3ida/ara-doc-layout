@@ -24,9 +24,8 @@ TABLE = "table"
 CAPTION = "caption"
 OTHER = "other"
 
-#: In the order the checkpoint's class ids were trained with
-#: (`one-last-try`, `arabic_ocr/phases/s02_layout/vocab.py`, v4). Baked into
-#: the weights: reordering it renames every region.
+#: In the order the checkpoints' class ids were trained with. Baked into the
+#: weights: reordering it renames every region.
 CLASSES = (
     TEXT,
     FOOTNOTE,
@@ -47,7 +46,7 @@ FURNITURE = frozenset({HEADER, FOOTER, PAGE_NUMBER})
 READ = frozenset({TEXT, FOOTNOTE, HASHIYA, CAPTION, TABLE})
 
 #: Regions whose x-centres are closer than this share of the page width are one
-#: column (`one-last-try`, `s03_reading_order/rtl_geometric.py`).
+#: column.
 COLUMN_GAP = 0.06
 
 #: Two regions share a band of the page when they overlap vertically by this
@@ -127,11 +126,9 @@ def reading_order(regions: list[Region], page_width: float) -> list[Region]:
     the gloss, then the footnotes. Furniture and figures are left out.
 
     Right on ordinary pages, a guess on stacked articles — a geometric
-    pre-fill, not a reading. Read purely right to left, a gloss printed in the
-    right margin came before the text it comments on; on synthetic pages where
-    it did, an OCR vote over the regions got the words right and the order
-    wrong (0.39 word error rate strictly in order, 0.15 with whole blocks
-    allowed to move).
+    pre-fill, not a reading. The gloss comes after the text whichever margin it
+    is printed in: read purely right to left, a gloss in the right margin came
+    before the text it comments on.
     """
     flow = [r for r in regions if r.kind in READ and r.kind not in (FOOTNOTE, HASHIYA)]
     glosses = [r for r in regions if r.kind == HASHIYA]

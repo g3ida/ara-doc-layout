@@ -79,3 +79,17 @@ def test_the_command_prints_each_page_and_draws_it(tmp_path, capfd) -> None:
         "footnote",
     ]
     assert (tmp_path / "two_columns.png").is_file()
+
+
+def test_the_command_reads_with_both_models_and_says_where_they_part(capfd) -> None:
+    pytest.importorskip("onnxruntime")
+    other = json.loads((DATA / "expected_dfine.json").read_text())["two_columns"]
+
+    main([str(DATA / "two_columns.png"), "--compare"])
+
+    page = json.loads(capfd.readouterr().out)
+    assert page["model"] == "pp-doclayout"
+    assert page["compared_with"]["model"] == "dfine"
+    assert [r["kind"] for r in page["compared_with"]["regions"]] == [r["kind"] for r in other]
+    # Both read the two columns as body and the notes as notes.
+    assert page["disagreements"] == []
